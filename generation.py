@@ -92,7 +92,7 @@ def getGraphStats(nodes, edges):
 
 def checkDeterminant(nodes,edges):
 	graph = createGraph(nodes, edges)
-	adjacency = nx.to_scipy_sparse_matrix(graph).todense()
+	adjacency = nx.to_scipy_sparse_array(graph).todense()
 	return np.absolute(np.round(np.linalg.det(adjacency),1))
 
 ############################################
@@ -175,12 +175,12 @@ polytopes = []
 stats_tracker = {}
 graph_tracker = set()
 
-for node in range(3, 5):
+for node in range(2, 6):
 	nodes = [x for x in range(node)]
 	edges = sorted(list(combinations(nodes, 2)))
 	# edges = list(combinations_with_replacement(nodes, 2)) <--removes self loops
 
-	for size in range(1, len(nodes) + 3):
+	for size in range(1, len(nodes) * 2):
 		polys = sorted(list(combinations_with_replacement(edges, size)))  # <--with replacement allows multiple edges between same nodes
 		for edge in polys:
 			newNodes, newEdges = pruneSolos(nodes,edge)
