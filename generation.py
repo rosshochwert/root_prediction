@@ -92,7 +92,7 @@ def getGraphStats(nodes, edges):
 
 def checkDeterminant(nodes,edges):
 	graph = createGraph(nodes, edges)
-	adjacency = nx.to_scipy_sparse_matrix(graph).todense()
+	adjacency = nx.to_scipy_sparse_array(graph).todense()
 	return np.absolute(np.round(np.linalg.det(adjacency),1))
 
 ############################################
