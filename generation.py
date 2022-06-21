@@ -8,7 +8,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import random
-
+import os
 
 random.seed(1234)
 
@@ -126,6 +126,8 @@ total.append(headers)
 file_name = '../rootsPowersKC'
 
 import time
+import glob
+import re
 
 start = time.time()
 
@@ -134,10 +136,25 @@ start = time.time()
 ############################################
 
 try:
-	current_df = pd.read_csv('train.csv')
-except:
-	print("No existing database, no problem")
-	current_df = None
+	files = glob.glob("*.csv")
+	if len(files)>0:
+		#check to see if train.csv is in set (which is final output)
+		if "train.csv" in files:
+			current_df = pd.read_csv("train.csv")
+			print("Full database detected, loading that in")
+		else:
+			ints = [int(re.sub('[^A-Za-z0-9]+','',x.strip(string.ascii_letters))) for x in files]
+			index, element = max(enumerate(ints), key=lambda x: x[1])
+			current_df = pd.read_csv(files[index])
+			print("Partial database detected, loading in " + str(element) + " graphs")
+	else:
+		print("No existing database, no problem")
+		current_df = None
+except Exception as e:
+	print(e)
+	print("Some sort of error loading database")
+
+
 
 ############################################
 ##### 1. Create Fake Polytopes Up to 5 Nodes
@@ -155,15 +172,15 @@ print('Generating Fake Polytopes')
 #################
 
 polytopes = []
-stats_tracker = []
+stats_tracker = {}
 graph_tracker = set()
 
-for node in range(2, 6):
+for node in range(3, 5):
 	nodes = [x for x in range(node)]
 	edges = sorted(list(combinations(nodes, 2)))
 	# edges = list(combinations_with_replacement(nodes, 2)) <--removes self loops
 
-	for size in range(1, len(nodes) * 2):
+	for size in range(1, len(nodes) + 3):
 		polys = sorted(list(combinations_with_replacement(edges, size)))  # <--with replacement allows multiple edges between same nodes
 		for edge in polys:
 			newNodes, newEdges = pruneSolos(nodes,edge)
@@ -171,7 +188,8 @@ for node in range(2, 6):
 				graph_stats = getGraphStats(newNodes, newEdges)
 				t_g_s = tuple(graph_stats)
 				if t_g_s not in graph_tracker:
-					stats_tracker.append(graph_stats)
+					key = tuple(newEdges)
+					stats_tracker[key] = graph_stats
 					polytopes.append(newEdges)
 					graph_tracker.add(t_g_s)
 
@@ -186,6 +204,10 @@ print("Calculating Canonical Results for Each Root")
 
 for index in range(0,len(polytopes)):
 	if index%5==0:
+		print("Writing results to CSV file")
+		with open('train' + str(index) + '.csv', "w",newline="") as f:
+			writer = csv.writer(f)
+			writer.writerows(total)
 		print("Passing through polytopes of index: " + str(index) + " out of " + str(len(polytopes)))
 		print("Total minutes elapsed: " + str(round((time.time()-start)/60,1)))
 	edge_list = convertEdgeList(polytopes[index])
@@ -193,7 +215,8 @@ for index in range(0,len(polytopes)):
 		##dealing with new entry, let's compute
 		for root in range(2,7):
 			parameters = edge_list + " " + str(root)
-			stats = stats_tracker[index]
+			key = tuple(polytopes[index])
+			stats = stats_tracker[key]
 			result = subprocess.run([file_name, parameters],stdout=subprocess.PIPE).stdout.decode('utf-8').split()
 			if len(result)!=3:
 				if(len(result)==0):
@@ -213,6 +236,12 @@ for index in range(0,len(polytopes)):
 		rows = current_df[current_df['edge list'] == edge_list]
 		for i, row in rows.iterrows():
 			total.append(row.values.flatten().tolist())
+	if index%5==0:
+		print("Writing results to CSV file")
+		with open('train' + str(index) + '.csv', "w",newline="") as f:
+			writer = csv.writer(f)
+			writer.writerows(total)
+
 
 
 ######################################
@@ -223,3 +252,6 @@ print("Writing Results to CSV File")
 with open('train.csv',"w",newline="") as f:
 	writer = csv.writer(f)
 	writer.writerows(total)
+
+
+print("Total minutes elapsed (finished): " + str(round((time.time()-start)/60,1)))
