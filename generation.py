@@ -196,6 +196,9 @@ for node in range(2, 6):
 					polytopes.append(newEdges)
 					graph_tracker.add(t_g_s)
 
+
+polytopes = sorted(polytopes)
+
 print("We have generated " + str(len(polytopes)) + " polytopes")
 print("Finished generating graphs in " + str(round(time.time()-start,2)) + " seconds")
 		
