@@ -50,10 +50,14 @@ def checkValid(nodes, edges):
 
 def pruneSolos(nodes, edges):
 	g = createGraph(nodes, edges)
-	solo_nodes = [node for (node, degree) in dict(g.degree).items()
-				  if degree == 1]
+	solo_nodes = [node for (node, degree) in dict(g.degree).items() if degree == 1]
 	[g.remove_node(node) for node in solo_nodes]
 	return (g.nodes, [(a,b) for a,b,c in g.edges]) #<--just take the edge list (first two params). third param is tracker for how many times this edge has been seen in graph.
+
+def checkTree(nodes,edges):
+	g = createGraph(nodes, edges)
+	solo_nodes = [node for (node, degree) in dict(g.degree).items() if degree == 1]
+	return len(solo_nodes) > 0
 
 
 def getGraphStats(nodes, edges):
@@ -139,7 +143,7 @@ start = time.time()
 ############################################
 
 try:
-	files = glob.glob("*.csv")
+	files = glob.glob("train*.csv")
 	if len(files)>0:
 		#check to see if train.csv is in set (which is final output)
 		if "train.csv" in files:
@@ -186,22 +190,30 @@ for node in range(2, 6):
 	for size in range(1, len(nodes) * 2):
 		polys = sorted(list(combinations_with_replacement(edges, size)))  # <--with replacement allows multiple edges between same nodes
 		for edge in polys:
-			newNodes, newEdges = pruneSolos(nodes,edge)
-			if checkValid(newNodes, newEdges):
-				graph_stats = getGraphStats(newNodes, newEdges)
+			if checkValid(nodes, edge) & checkTree(nodes,edge):
+				graph_stats = getGraphStats(nodes, edge)
 				t_g_s = tuple(graph_stats)
 				if t_g_s not in graph_tracker:
-					key = tuple(newEdges)
+					key = tuple(edge)
 					stats_tracker[key] = graph_stats
-					polytopes.append(newEdges)
+					polytopes.append(edge)
 					graph_tracker.add(t_g_s)
 
 
-polytopes = sorted(polytopes)
+polytopes.sort(key=len)
+
+
+polytopes_convert = [str(convertEdgeList(polytopes[index])) for index in range(0,len(polytopes))]
+
+print("Writing Results to CSV File")
+with open('graphs.csv',"w",newline="") as f:
+	writer = csv.writer(f)
+	writer.writerows(polytopes_convert)
+
 
 print("We have generated " + str(len(polytopes)) + " polytopes")
 print("Finished generating graphs in " + str(round(time.time()-start,2)) + " seconds")
-		
+
 ############################################
 ##### 2. Calculate Canoncial Results for Each Root
 ############################################
@@ -209,13 +221,6 @@ print("Calculating Canonical Results for Each Root")
 
 
 for index in range(0,len(polytopes)):
-	if index%5==0:
-		print("Writing results to CSV file")
-		with open('train' + str(index) + '.csv', "w",newline="") as f:
-			writer = csv.writer(f)
-			writer.writerows(total)
-		print("Passing through polytopes of index: " + str(index) + " out of " + str(len(polytopes)))
-		print("Total minutes elapsed: " + str(round((time.time()-start)/60,1)))
 	edge_list = convertEdgeList(polytopes[index])
 	if current_df is None or len(current_df[current_df['edge list'] == edge_list])==0:
 		##dealing with new entry, let's compute
@@ -227,12 +232,16 @@ for index in range(0,len(polytopes)):
 			for root in range(2,degree_bundle+1):
 				if(degree_bundle%root==0):
 					parameters = edge_list + " " + str(root) + " " + str(power)
+					print(parameters)
 					result = subprocess.run([file_name, parameters],stdout=subprocess.PIPE).stdout.decode('utf-8').split()
 					if len(result)!=5:
 						if(len(result)==0):
 							#negative genus?
+							print("Invalid argument. Skipping this entry in CSV file")
 							pass;
 						else:
+							print(result)
+							print("Unexpected output found, trying to write into CSV")
 							#infinite solutions?
 							row = [index, edge_list, power, root, False]
 							row = row + stats + result[-3:]
@@ -246,6 +255,14 @@ for index in range(0,len(polytopes)):
 		rows = current_df[current_df['edge list'] == edge_list]
 		for i, row in rows.iterrows():
 			total.append(row.values.flatten().tolist())
+
+	if (index%5==0):
+		print("Writing results to CSV file")
+		with open('train' + str(index) + '.csv', "w",newline="") as f:
+			writer = csv.writer(f)
+			writer.writerows(total)
+		print("Passing through polytopes of index: " + str(index) + " out of " + str(len(polytopes)))
+		print("Total minutes elapsed: " + str(round((time.time()-start)/60,1)))
 
 
 ######################################
