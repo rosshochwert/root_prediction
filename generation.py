@@ -243,12 +243,6 @@ for index in range(0,len(polytopes)):
 		rows = current_df[current_df['edge list'] == edge_list]
 		for i, row in rows.iterrows():
 			total.append(row.values.flatten().tolist())
-	if index%5==0:
-		print("Writing results to CSV file")
-		with open('train' + str(index) + '.csv', "w",newline="") as f:
-			writer = csv.writer(f)
-			writer.writerows(total)
-
 
 
 ######################################
