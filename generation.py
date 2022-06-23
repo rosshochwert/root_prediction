@@ -103,6 +103,7 @@ total = []
 headers = [
 	'index',
 	'edge list',
+	'power',
 	'root',
 	'all_roots_found?',
 	'nodes',
@@ -118,7 +119,9 @@ headers = [
 	'cluscoef',
 	'betti',
 	'count',
-	'percent',
+	'margin',
+	'count_percent',
+	'margin_percent',
 	'i',
 	]
 total.append(headers)
@@ -213,24 +216,28 @@ for index in range(0,len(polytopes)):
 	edge_list = convertEdgeList(polytopes[index])
 	if current_df is None or len(current_df[current_df['edge list'] == edge_list])==0:
 		##dealing with new entry, let's compute
-		for root in range(2,7):
-			parameters = edge_list + " " + str(root)
+		for power in range(1,7):
 			key = tuple(polytopes[index])
 			stats = stats_tracker[key]
-			result = subprocess.run([file_name, parameters],stdout=subprocess.PIPE).stdout.decode('utf-8').split()
-			if len(result)!=3:
-				if(len(result)==0):
-					#negative genus?
-					pass;
-				else:
-					#infinite solutions?
-					row = [index, edge_list, root, False]
-					row = row + stats + result[-3:]
-					total.append(row)
-			else:
-				row = [index, edge_list, root, True]
-				row = row + stats + result
-				total.append(row)
+			betti = stats[11]
+			degree_bundle = int(power*(2*betti-2))
+			for root in range(2,degree_bundle+1):
+				if(degree_bundle%root==0):
+					parameters = edge_list + " " + str(root) + " " + str(power)
+					result = subprocess.run([file_name, parameters],stdout=subprocess.PIPE).stdout.decode('utf-8').split()
+					if len(result)!=5:
+						if(len(result)==0):
+							#negative genus?
+							pass;
+						else:
+							#infinite solutions?
+							row = [index, edge_list, power, root, False]
+							row = row + stats + result[-3:]
+							total.append(row)
+					else:
+						row = [index, edge_list, power, root, True]
+						row = row + stats + result
+						total.append(row)
 	else:
 		##old entry from before, no need to waste computer space on it
 		rows = current_df[current_df['edge list'] == edge_list]
